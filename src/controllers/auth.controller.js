@@ -1,5 +1,6 @@
 const { sendActivationEmail } = require('../services/email.service.js');
 const authService = require('../services/auth.service.js');
+const jwtService = require('../services/jwt.service.js');
 const { normalize } = require('../helper/normalize.js');
 const { v4: uuidv4 } = require('uuid');
 
@@ -18,28 +19,41 @@ const register = async (req, res) => {
 };
 
 const activate = async (req, res) => {
-  const { activationToken } = req.params;
-  const client = await authService.getOne(activationToken);
+  try {
+    const { activationToken } = req.params;
+    const client = await authService.getOneBy('token', activationToken);
 
-  if (!client) {
-    return res.status(404).send();
-  } else {
-    client.activationToken = null;
-    client.save();
+    if (!client) {
+      return res.status(404).send();
+    } else {
+      client.activationToken = null;
+      client.save();
 
-    return res.status(200).send(normalize(client));
+      return res.status(200).send(normalize(client));
+    }
+  } catch (err) {
+    return res.status(400).send(err.message);
   }
 };
 
+// user???
 const login = async (req, res) => {
-  const { email, password } = req.body;
-  const client = await authService.getOne(email);
+  try {
+    const { email, password } = req.body;
+    const client = await authService.getOneBy('email', email);
 
-  if (!client || client.password !== password) {
-    return res.status(401).send();
+    if (!client || client.password !== password) {
+      return res.status(401).send();
+    }
+
+    const normalizedClient = await normalize(client);
+
+    const accessToken = await jwtService.sign(normalizedClient);
+
+    return res.status(200).send({ user: normalizedClient, accessToken });
+  } catch (err) {
+    return res.status(400).send(err.message);
   }
-
-  return res.status(200).send(client);
 };
 
 module.exports = {

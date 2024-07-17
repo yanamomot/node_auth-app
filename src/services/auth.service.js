@@ -1,9 +1,17 @@
 const { Client } = require('../models/Client.model.js');
 
-const getOne = async (data) => {
-  const res = await Client.findOne({ where: { data } });
+const getOneBy = async (type, data) => {
+  if (type === 'email') {
+    const res = await Client.findOne({ where: { email: data } });
 
-  return res;
+    return res;
+  }
+
+  if (type === 'token') {
+    const res = await Client.findOne({ where: { activationToken: data } });
+
+    return res;
+  }
 };
 
 const create = async (email, password, activationToken) => {
@@ -13,6 +21,6 @@ const create = async (email, password, activationToken) => {
 };
 
 module.exports = {
-  getOne,
+  getOneBy,
   create,
 };
