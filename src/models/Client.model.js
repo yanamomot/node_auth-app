@@ -20,6 +20,10 @@ const Client = client.define(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    activationToken: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     tableName: 'clients',

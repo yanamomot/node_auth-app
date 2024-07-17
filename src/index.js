@@ -3,6 +3,7 @@
 
 const express = require('express');
 const { authRouter } = require('./routes/auth.route.js');
+const { clientRouter } = require('./routes/client.route.js');
 
 require('dotenv/config');
 
@@ -19,6 +20,7 @@ app.use(
 );
 app.use(express.json());
 app.use(authRouter);
+app.use('/users', clientRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on ${PORT} port`);
