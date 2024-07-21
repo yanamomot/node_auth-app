@@ -3,25 +3,32 @@ const authService = require('../services/auth.service.js');
 const jwtService = require('../services/jwt.service.js');
 const normalize = require('../helper/normalize.js');
 const { v4: uuidv4 } = require('uuid');
-const AppError = require('../utils/appError.js');
+const ApiError = require('../utils/apiError.js');
 
 const register = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email) {
-    throw new AppError('ValidationError', 'Email is required', 400);
+    throw ApiError.notFound('Email is required');
   }
 
   if (!password) {
-    throw new AppError('ValidationError', 'Password is required', 400);
+    throw ApiError.notFound('Password is required');
+  }
+
+  const isExist = await authService.getOneBy('email', email);
+
+  if (isExist) {
+    throw ApiError.badRequest('The user for this email already exists');
   }
 
   const activationToken = `${uuidv4()}${uuidv4()}${uuidv4()}${uuidv4()}`;
-  const newUser = await authService.create(email, password, activationToken);
+
+  await authService.create(email, password, activationToken);
 
   await sendActivationEmail(email, activationToken);
 
-  return res.status(200).send(normalize(newUser));
+  return res.status(200).send({ message: 'New user created' });
 };
 
 const activate = async (req, res) => {
@@ -29,7 +36,7 @@ const activate = async (req, res) => {
   const client = await authService.getOneBy('token', activationToken);
 
   if (!client) {
-    throw new AppError('NotFoundError', 'Activation token not found', 404);
+    throw ApiError.notFound('User Not Found');
   } else {
     client.activationToken = null;
     client.save();
@@ -41,10 +48,19 @@ const activate = async (req, res) => {
 // user???
 const login = async (req, res) => {
   const { email, password } = req.body;
+
+  if (!email) {
+    throw ApiError.notFound('Email is required');
+  }
+
+  if (!password) {
+    throw ApiError.notFound('Password is required');
+  }
+
   const client = await authService.getOneBy('email', email);
 
   if (!client || client.password !== password) {
-    throw new AppError('UnauthorizedError', 'Unauthorized access', 401);
+    throw ApiError.unauthorized('Please register to gain access');
   }
 
   const normalizedClient = await normalize(client);

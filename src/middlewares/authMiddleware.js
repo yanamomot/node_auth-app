@@ -1,5 +1,5 @@
 const jwtService = require('../services/jwt.service.js');
-const AppError = require('../utils/appError.js');
+const AppError = require('../utils/apiError.js');
 
 const authMiddleware = (req, res, next) => {
   const authorization = req.headers['authorization'] || '';

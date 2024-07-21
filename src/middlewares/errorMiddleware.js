@@ -1,11 +1,13 @@
-const errorMiddleware = (error, req, res, next) => {
-  const { statusCode = 500, message } = error;
+const ApiError = require('../utils/apiError');
 
-  res.status(statusCode).json({
-    status: 'error',
-    statusCode,
-    message,
-  });
+const errorMiddleware = (error, req, res, next) => {
+  if (error instanceof ApiError) {
+    res.status(error.status).send({
+      message: error.message,
+    });
+  }
+
+  res.status(500).send({ message: 'Server error' });
 
   next();
 };

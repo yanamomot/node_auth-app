@@ -15,9 +15,7 @@ const getOneBy = async (type, data) => {
 };
 
 const create = async (email, password, activationToken) => {
-  const res = await Client.create({ email, password, activationToken });
-
-  return res;
+  await Client.create({ email, password, activationToken });
 };
 
 module.exports = {
