@@ -1,34 +1,50 @@
 const { sendActivationEmail } = require('../services/email.service.js');
+const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcrypt');
+const tokenServise = require('../services/token.service.js');
+
 const authService = require('../services/auth.service.js');
 const jwtService = require('../services/jwt.service.js');
-const normalize = require('../helper/normalize.js');
-const { v4: uuidv4 } = require('uuid');
+
+const {
+  normalize,
+  emailValidation,
+  passwordValidation,
+  generateTokens,
+} = require('../utils/helper.js');
+
 const ApiError = require('../utils/apiError.js');
+const TypeErrorMessages = require('../utils/errMessages.js');
 
 const register = async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email) {
-    throw ApiError.notFound('Email is required');
-  }
+  const errors = {
+    email: emailValidation(email),
+    password: passwordValidation(password),
+  };
 
-  if (!password) {
-    throw ApiError.notFound('Password is required');
+  if (errors.email || errors.password) {
+    throw ApiError.badRequest(TypeErrorMessages.BadRequest, errors);
   }
 
   const isExist = await authService.getOneBy('email', email);
 
   if (isExist) {
-    throw ApiError.badRequest('The user for this email already exists');
+    throw ApiError.badRequest(TypeErrorMessages.IsUserExist, {
+      email: TypeErrorMessages.IsUserExist,
+    });
   }
 
   const activationToken = `${uuidv4()}${uuidv4()}${uuidv4()}${uuidv4()}`;
 
-  await authService.create(email, password, activationToken);
+  const hashedPass = await bcrypt.hash(password, 10);
+
+  await authService.create(email, hashedPass, activationToken);
 
   await sendActivationEmail(email, activationToken);
 
-  return res.status(200).send({ message: 'New user created' });
+  return res.status(200).send({ message: TypeErrorMessages.Created });
 };
 
 const activate = async (req, res) => {
@@ -36,42 +52,79 @@ const activate = async (req, res) => {
   const client = await authService.getOneBy('token', activationToken);
 
   if (!client) {
-    throw ApiError.notFound('User Not Found');
-  } else {
-    client.activationToken = null;
-    client.save();
-
-    return res.status(200).send(normalize(client));
+    throw ApiError.notFound(TypeErrorMessages.UserNotFound, {
+      email: TypeErrorMessages.UserNotFound,
+    });
   }
+  client.activationToken = null;
+  await client.save();
+
+  return res.status(200).send(normalize(client));
 };
 
 // user???
 const login = async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email) {
-    throw ApiError.notFound('Email is required');
-  }
+  const errors = {
+    email: emailValidation(email),
+    password: passwordValidation(password),
+  };
 
-  if (!password) {
-    throw ApiError.notFound('Password is required');
+  if (errors.email || errors.password) {
+    throw ApiError.badRequest(TypeErrorMessages.BadRequest, errors);
   }
 
   const client = await authService.getOneBy('email', email);
 
-  if (!client || client.password !== password) {
-    throw ApiError.unauthorized('Please register to gain access');
+  if (!client) {
+    throw ApiError.badRequest(TypeErrorMessages.UserNotFound, {
+      email: TypeErrorMessages.UserNotFound,
+    });
   }
 
-  const normalizedClient = await normalize(client);
+  const isPasswordValid = await bcrypt.compare(password, client.password);
 
-  const accessToken = await jwtService.sign(normalizedClient);
+  if (!isPasswordValid) {
+    throw ApiError.notFound(TypeErrorMessages.WrongPassword, {
+      password: TypeErrorMessages.WrongPassword,
+    });
+  }
 
-  return res.status(200).send({ user: normalizedClient, accessToken });
+  // const normalizedClient = await normalize('withActToken', client);
+
+  // if (client.activationToken) {
+  //   throw ApiError.unauthorized({ email: TypeErrorMessages.ReqVerify });
+  // }
+
+  const result = await generateTokens(res, client);
+
+  return result;
+};
+
+const logout = async () => {};
+
+const refresh = async (req, res) => {
+  const { refreshToken } = req.cookies;
+
+  const userData = await jwtService.verifyRefresh(refreshToken);
+  const token = await tokenServise.getByToken(refreshToken);
+
+  if (!userData || !token) {
+    throw ApiError.unauthorized({ email: TypeErrorMessages.ReqAuthorize });
+  }
+
+  const user = await authService.getOneBy('email', userData.email);
+
+  const result = await generateTokens(res, user);
+
+  return result;
 };
 
 module.exports = {
   register,
   activate,
   login,
+  logout,
+  refresh,
 };

@@ -31,4 +31,6 @@ const Client = client.define(
   },
 );
 
+Client.sync();
+
 module.exports = { Client };

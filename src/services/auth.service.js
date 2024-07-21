@@ -18,7 +18,10 @@ const create = async (email, password, activationToken) => {
   await Client.create({ email, password, activationToken });
 };
 
+const deleteToken = async () => {};
+
 module.exports = {
   getOneBy,
   create,
+  deleteToken,
 };

@@ -1,5 +1,5 @@
 const { Client } = require('../models/Client.model.js');
-const { normalize } = require('../helper/normalize.js');
+const { normalize } = require('../utils/helper.js');
 
 const getAllActivated = async () => {
   const res = (await Client.findAll({ where: { activationToken: null } })).map(
