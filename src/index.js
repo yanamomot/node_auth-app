@@ -8,6 +8,7 @@ const { clientRouter } = require('./routes/client.route.js');
 require('dotenv/config');
 
 const cors = require('cors');
+const errorMiddleware = require('./middlewares/errorMiddleware.js');
 
 const app = express();
 const PORT = process.env.PORT || 3008;
@@ -21,6 +22,8 @@ app.use(
 app.use(express.json());
 app.use(authRouter);
 app.use('/users', clientRouter);
+
+app.use(errorMiddleware);
 
 app.listen(PORT, () => {
   console.log(`Server is running on ${PORT} port`);
